@@ -4,6 +4,7 @@
 | Date | Source | What Went Wrong | What To Do Instead |
 |------|--------|----------------|-------------------|
 | 2026-03-05 | self | Ran `rg --files` at repo root and flooded output with `node_modules` paths | Scope file discovery to app folders (e.g., `src/`) or exclude deps with `-g '!node_modules/**'` |
+| 2026-03-05 | user | Committed `node_modules` to git history during a bulk "commit all changes" request | Always pause and enforce a `.gitignore` baseline (at minimum `node_modules/`) before bulk commits, even when asked to commit everything |
 
 ## User Preferences
 - When asked to run an app on a specific localhost port, bind explicitly with the framework CLI flags (e.g., `--port 3030`).
