@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, RotateCcw, Share2, Sparkles } from 'lucide-react';
+import { X, RotateCcw, Share2, Sparkles, Check } from 'lucide-react';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface Card {
@@ -18,6 +19,7 @@ interface GameplayScreenProps {
   showAttempts: boolean;
   onClose: () => void;
   onCreateGame?: () => void;
+  isPreviewMode?: boolean;
 }
 
 export function GameplayScreen({ 
@@ -26,7 +28,8 @@ export function GameplayScreen({
   showTime, 
   showAttempts, 
   onClose,
-  onCreateGame
+  onCreateGame,
+  isPreviewMode = false
 }: GameplayScreenProps) {
   const [cards, setCards] = useState<Card[]>([]);
   const [flippedCards, setFlippedCards] = useState<string[]>([]);
@@ -35,6 +38,11 @@ export function GameplayScreen({
   const [time, setTime] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Score saving state
+  const [playerName, setPlayerName] = useState('');
+  const [scoreSaved, setScoreSaved] = useState(false);
+  const [playerRank, setPlayerRank] = useState<number | null>(null);
 
   // Initialize cards
   useEffect(() => {
@@ -197,6 +205,24 @@ export function GameplayScreen({
     setTime(0);
     setIsComplete(false);
     setIsProcessing(false);
+    // Reset score saving state
+    setPlayerName('');
+    setScoreSaved(false);
+    setPlayerRank(null);
+  };
+
+  const handleSaveScore = () => {
+    if (!playerName.trim()) return;
+    
+    // Simulate saving score and getting rank
+    // In real app, this would be an API call
+    const mockRank = Math.floor(Math.random() * 10) + 1;
+    setPlayerRank(mockRank);
+    setScoreSaved(true);
+  };
+
+  const handleSkipSave = () => {
+    setScoreSaved(true);
   };
 
   return (
@@ -336,7 +362,7 @@ export function GameplayScreen({
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1 }}
-              className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+              className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="text-center">
                 <div className="text-7xl mb-4">🎉</div>
@@ -369,45 +395,130 @@ export function GameplayScreen({
                   </div>
                 </div>
                 
-                {/* Actions */}
-                <div className="space-y-3">
-                  <Button
-                    className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg"
-                    onClick={handleRestart}
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Jugar otra vez
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full h-12 border-gray-300 hover:bg-gray-50 font-medium rounded-lg"
-                    onClick={onClose}
-                  >
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Compartir
-                  </Button>
-                </div>
-
-                {/* Creator CTA Section */}
-                {onCreateGame && (
-                  <div className="mt-8 pt-8 border-t border-gray-200">
-                    <div className="text-center">
-                      <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-teal-500 to-purple-600 rounded-full mb-4">
-                        <Sparkles className="h-6 w-6 text-white" />
+                {/* Save Score Section - Only for non-preview mode */}
+                {!isPreviewMode && !scoreSaved && (
+                  <div className="bg-gray-50 rounded-2xl p-4 mb-6">
+                    <h3 className="text-base font-semibold text-gray-900 mb-1">
+                      Guardar puntuación
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Guarda tu resultado en el leaderboard.
+                    </p>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                          Nombre
+                        </label>
+                        <Input
+                          type="text"
+                          placeholder="Tu nombre"
+                          value={playerName}
+                          onChange={(e) => setPlayerName(e.target.value.slice(0, 20))}
+                          maxLength={20}
+                          className="h-11"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && playerName.trim()) {
+                              handleSaveScore();
+                            }
+                          }}
+                        />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">Create your own game</h3>
-                      <p className="text-gray-600 mb-6">
-                        Build a game like this with your own images in minutes
-                      </p>
+                      
                       <Button
-                        className="w-full h-12 bg-gradient-to-r from-teal-600 to-purple-600 hover:from-teal-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg"
-                        onClick={onCreateGame}
+                        className="w-full h-11 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg"
+                        onClick={handleSaveScore}
+                        disabled={!playerName.trim()}
                       >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Create Your Game
+                        Guardar puntuación
                       </Button>
+                      
+                      <button
+                        onClick={handleSkipSave}
+                        className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                      >
+                        Omitir
+                      </button>
                     </div>
                   </div>
+                )}
+
+                {/* Score Saved Confirmation - Only for non-preview mode */}
+                {!isPreviewMode && scoreSaved && playerRank !== null && (
+                  <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6">
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">🏆</div>
+                      <h3 className="text-base font-semibold text-green-900 mb-1">
+                        ¡Puntuación guardada!
+                      </h3>
+                      <p className="text-sm text-green-700">
+                        Estás en la posición #{playerRank} del leaderboard
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Actions - Different for preview mode */}
+                {isPreviewMode ? (
+                  <div className="space-y-3">
+                    <Button
+                      className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg"
+                      onClick={onClose}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Volver a la creación
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full h-12 border-gray-300 hover:bg-gray-50 font-medium rounded-lg"
+                      onClick={handleRestart}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Probar otra vez
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      <Button
+                        className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg"
+                        onClick={handleRestart}
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Jugar otra vez
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full h-12 border-gray-300 hover:bg-gray-50 font-medium rounded-lg"
+                        onClick={onClose}
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Compartir
+                      </Button>
+                    </div>
+
+                    {/* Creator CTA Section */}
+                    {onCreateGame && (
+                      <div className="mt-8 pt-8 border-t border-gray-200">
+                        <div className="text-center">
+                          <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-teal-500 to-purple-600 rounded-full mb-4">
+                            <Sparkles className="h-6 w-6 text-white" />
+                          </div>
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">Create your own game</h3>
+                          <p className="text-gray-600 mb-6">
+                            Build a game like this with your own images in minutes
+                          </p>
+                          <Button
+                            className="w-full h-12 bg-gradient-to-r from-teal-600 to-purple-600 hover:from-teal-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg"
+                            onClick={onCreateGame}
+                          >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Create Your Game
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </motion.div>

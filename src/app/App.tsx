@@ -26,6 +26,12 @@ import { GamesPage } from './components/admin/GamesPage';
 import { MediaPage } from './components/admin/MediaPage';
 import { ActivityPage } from './components/admin/ActivityPage';
 import { AuthPage } from './components/AuthPage';
+import { NotFoundScreen } from './components/error-states/NotFoundScreen';
+import { ServerErrorScreen } from './components/error-states/ServerErrorScreen';
+import { GameNotFoundScreen } from './components/error-states/GameNotFoundScreen';
+import { GamePrivateScreen } from './components/error-states/GamePrivateScreen';
+import { NoGamesYetScreen } from './components/error-states/NoGamesYetScreen';
+import { LeaderboardEmptyScreen } from './components/error-states/LeaderboardEmptyScreen';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 
@@ -64,9 +70,11 @@ export default function App() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showGameplay, setShowGameplay] = useState(false);
+  const [isGameplayPreview, setIsGameplayPreview] = useState(false);
   const [showGameDetails, setShowGameDetails] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardSource, setLeaderboardSource] = useState<'direct' | 'gameDetails'>('direct');
+  const [showErrorState, setShowErrorState] = useState<'404' | '500' | 'gameNotFound' | 'gamePrivate' | 'noGames' | 'leaderboardEmpty' | null>(null);
   const [photos, setPhotos] = useState([
     { id: 1, color: 'bg-purple-600' },
     { id: 2, color: 'bg-blue-700' },
@@ -293,7 +301,7 @@ export default function App() {
                 <Settings className="h-5 w-5 text-blue-600" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem onClick={() => setShowLeaderboard(true)}>
                 <Trophy className="h-4 w-4 mr-2" />
                 Ver Leaderboard (Demo)
@@ -301,6 +309,28 @@ export default function App() {
               <DropdownMenuItem onClick={() => setViewMode('admin')}>
                 <Settings className="h-4 w-4 mr-2" />
                 Admin Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">
+                Error States (Demo)
+              </div>
+              <DropdownMenuItem onClick={() => setShowErrorState('404')}>
+                404 - Página no encontrada
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowErrorState('500')}>
+                500 - Error del servidor
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowErrorState('gameNotFound')}>
+                Juego no encontrado
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowErrorState('gamePrivate')}>
+                Juego privado
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowErrorState('noGames')}>
+                Sin juegos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowErrorState('leaderboardEmpty')}>
+                Leaderboard vacío
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -350,12 +380,6 @@ export default function App() {
           <>
             {step === 1 ? (
               <>
-                {/* Step indicator */}
-                <div className="bg-white px-4 py-4 border-b border-gray-200">
-                  <h2 className="text-xs font-semibold text-gray-500 text-center uppercase tracking-wide">Paso 1 de 2</h2>
-                  <p className="text-xl font-semibold text-gray-900 text-center mt-1">Información básica</p>
-                </div>
-
                 {/* iOS Form Sections */}
                 <div className="mt-4 space-y-4">
                   {/* Título Section */}
@@ -394,6 +418,58 @@ export default function App() {
                       </div>
                       <ChevronRight className="h-5 w-5 text-gray-400" />
                     </button>
+                  </div>
+
+                  {/* Fotos Section - Card Group */}
+                  <div className="px-4">
+                    <div className="bg-gray-50 rounded-2xl p-5">
+                      {/* Header */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-sm font-medium text-gray-900">
+                            Fotos del juego
+                          </label>
+                          <span className="text-sm text-gray-500 font-medium">
+                            {photos.length} / {nextTarget} fotos
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {isValidPhotoCount 
+                            ? `Modo ${gameModes[activeMode!].name} activado`
+                            : `Añade ${nextTarget - photos.length} foto${nextTarget - photos.length !== 1 ? 's' : ''} más para activar el modo ${gameModes[(Object.keys(gameModes) as GameMode[]).find(m => gameModes[m].photos === nextTarget)!].name}`
+                          }
+                        </p>
+                      </div>
+
+                      {/* Photo Grid with Add Button as First Tile */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Add Photos Tile */}
+                        <button
+                          onClick={addPhotos}
+                          disabled={photos.length >= 10}
+                          className="aspect-square rounded-xl border-2 border-dashed border-gray-300 bg-white flex flex-col items-center justify-center gap-2 hover:border-blue-600 hover:bg-blue-50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:border-gray-300 disabled:hover:bg-white"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                            <Plus className="h-5 w-5 text-white" />
+                          </div>
+                          <span className="text-sm text-gray-600 font-medium">Añadir</span>
+                        </button>
+
+                        {/* Photo Thumbnails */}
+                        {photos.map((photo) => (
+                          <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden">
+                            <div className={`w-full h-full ${photo.color}`} />
+                            <button
+                              onClick={() => removePhoto(photo.id)}
+                              className="absolute top-2 right-2 w-7 h-7 bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-95 transition-transform"
+                              aria-label="Eliminar foto"
+                            >
+                              <X className="h-4 w-4 text-white" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Game Mode Section - Auto-determined by photo count */}
@@ -481,68 +557,10 @@ export default function App() {
                       })}
                     </div>
                   </div>
-
-                  {/* Fotos Section - Card Group */}
-                  <div className="px-4">
-                    <div className="bg-gray-50 rounded-2xl p-5">
-                      {/* Header */}
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-sm font-medium text-gray-900">
-                            Fotos del juego
-                          </label>
-                          <span className="text-sm text-gray-500 font-medium">
-                            {photos.length} / {nextTarget} fotos
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {isValidPhotoCount 
-                            ? `Modo ${gameModes[activeMode!].name} activado`
-                            : `Añade ${nextTarget - photos.length} foto${nextTarget - photos.length !== 1 ? 's' : ''} más para activar el modo ${gameModes[(Object.keys(gameModes) as GameMode[]).find(m => gameModes[m].photos === nextTarget)!].name}`
-                          }
-                        </p>
-                      </div>
-
-                      {/* Photo Grid with Add Button as First Tile */}
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Add Photos Tile */}
-                        <button
-                          onClick={addPhotos}
-                          disabled={photos.length >= 10}
-                          className="aspect-square rounded-xl border-2 border-dashed border-gray-300 bg-white flex flex-col items-center justify-center gap-2 hover:border-blue-600 hover:bg-blue-50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:border-gray-300 disabled:hover:bg-white"
-                        >
-                          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
-                            <Plus className="h-5 w-5 text-white" />
-                          </div>
-                          <span className="text-sm text-gray-600 font-medium">Añadir</span>
-                        </button>
-
-                        {/* Photo Thumbnails */}
-                        {photos.map((photo) => (
-                          <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden">
-                            <div className={`w-full h-full ${photo.color}`} />
-                            <button
-                              onClick={() => removePhoto(photo.id)}
-                              className="absolute top-2 right-2 w-7 h-7 bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-95 transition-transform"
-                              aria-label="Eliminar foto"
-                            >
-                              <X className="h-4 w-4 text-white" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </>
             ) : (
               <>
-                {/* Step 2: Preview and Customize */}
-                <div className="bg-white px-4 py-4 border-b border-gray-200">
-                  <h2 className="text-sm text-gray-500 uppercase tracking-wide text-center">Paso 2 de 2</h2>
-                  <p className="text-lg font-semibold text-gray-900 text-center mt-1">Configuración del juego</p>
-                </div>
-
                 <div className="mt-4 space-y-4">
                   {/* Game Preview Card */}
                   <div className="px-4">
@@ -577,6 +595,7 @@ export default function App() {
                       <button
                         onClick={() => {
                           setShowPreviewModal(false);
+                          setIsGameplayPreview(true);
                           setShowGameplay(true);
                         }}
                         className="w-full p-4 flex items-center justify-center gap-2 text-blue-600 font-medium hover:bg-blue-50 active:bg-blue-100 transition-colors border-t border-gray-200"
@@ -645,34 +664,6 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-
-                  {/* URL del juego */}
-                  <div className="px-4">
-                    <div className="mb-2 px-1">
-                      <h3 className="text-xs text-gray-500 uppercase tracking-wide">
-                        URL del juego (opcional)
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Esto cambiará el enlace del juego
-                      </p>
-                    </div>
-                    <div className="bg-white rounded-2xl border border-gray-200 p-4">
-                      <Input
-                        type="text"
-                        placeholder="ej: navidad-2026"
-                        value={slug}
-                        onChange={(e) => {
-                          setSlug(e.target.value);
-                          setSlugManuallyEdited(true);
-                        }}
-                        className="border-gray-300 h-11 text-base mb-2"
-                      />
-                      <p className="text-xs font-mono break-all px-1">
-                        <span className="text-gray-400">memory-game.com/user/</span>
-                        <span className="text-gray-900 font-semibold">{slug || 'juego-sin-nombre'}</span>
-                      </p>
-                    </div>
-                  </div>
                 </div>
               </>
             )}
@@ -708,11 +699,13 @@ export default function App() {
           <div className="max-w-2xl mx-auto">
             {step === 1 ? (
               <Button 
-                className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg"
-                disabled={!isValidPhotoCount}
+                className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg disabled:opacity-70"
+                disabled={!isValidPhotoCount || !title.trim()}
                 onClick={handleContinueToStep2}
               >
-                {!isValidPhotoCount ? (
+                {!title.trim() ? (
+                  'Añade un título para continuar'
+                ) : !isValidPhotoCount ? (
                   <span className="flex items-center gap-2">
                     {photos.length < 4 
                       ? `Añade ${4 - photos.length} foto${4 - photos.length !== 1 ? 's' : ''} más para continuar`
@@ -824,6 +817,7 @@ export default function App() {
                   className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg"
                   onClick={() => {
                     setShowSuccessModal(false);
+                    setIsGameplayPreview(true);
                     setShowGameplay(true);
                   }}
                 >
@@ -854,9 +848,14 @@ export default function App() {
           photos={photos}
           showTime={showTime}
           showAttempts={showAttempts}
-          onClose={() => setShowGameplay(false)}
+          isPreviewMode={isGameplayPreview}
+          onClose={() => {
+            setShowGameplay(false);
+            setIsGameplayPreview(false);
+          }}
           onCreateGame={() => {
             setShowGameplay(false);
+            setIsGameplayPreview(false);
             setIsAuthenticated(false);
           }}
         />
@@ -1077,6 +1076,91 @@ export default function App() {
               setShowGameDetails(true);
               setLeaderboardSource('direct');
             }
+          }}
+        />
+      )}
+
+      {/* Error State Screens */}
+      {showErrorState === '404' && (
+        <NotFoundScreen
+          onGoHome={() => {
+            setShowErrorState(null);
+            setActiveTab('crear');
+          }}
+          onViewGames={() => {
+            setShowErrorState(null);
+            setActiveTab('mis-juegos');
+          }}
+        />
+      )}
+
+      {showErrorState === '500' && (
+        <ServerErrorScreen
+          onRetry={() => {
+            setShowErrorState(null);
+            toast.success('Reintentando...');
+          }}
+          onGoHome={() => {
+            setShowErrorState(null);
+            setActiveTab('crear');
+          }}
+        />
+      )}
+
+      {showErrorState === 'gameNotFound' && (
+        <GameNotFoundScreen
+          showBackButton
+          onBack={() => setShowErrorState(null)}
+          onExploreGames={() => {
+            setShowErrorState(null);
+            setActiveTab('mis-juegos');
+          }}
+          onCreateGame={() => {
+            setShowErrorState(null);
+            setActiveTab('crear');
+          }}
+        />
+      )}
+
+      {showErrorState === 'gamePrivate' && (
+        <GamePrivateScreen
+          showBackButton
+          onBack={() => setShowErrorState(null)}
+          onGoHome={() => {
+            setShowErrorState(null);
+            setActiveTab('crear');
+          }}
+          onCreateGame={() => {
+            setShowErrorState(null);
+            setActiveTab('crear');
+          }}
+        />
+      )}
+
+      {showErrorState === 'noGames' && (
+        <NoGamesYetScreen
+          onCreateGame={() => {
+            setShowErrorState(null);
+            setActiveTab('crear');
+          }}
+          onExploreExamples={() => {
+            setShowErrorState(null);
+            toast.info('Explorando ejemplos...');
+          }}
+        />
+      )}
+
+      {showErrorState === 'leaderboardEmpty' && (
+        <LeaderboardEmptyScreen
+          showBackButton
+          onBack={() => setShowErrorState(null)}
+          onPlayNow={() => {
+            setShowErrorState(null);
+            setShowGameplay(true);
+          }}
+          onShareGame={() => {
+            setShowErrorState(null);
+            toast.success('Compartiendo juego...');
           }}
         />
       )}
