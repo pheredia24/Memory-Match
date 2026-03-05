@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Settings, X, Upload, Check, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, X, Upload, Check, ArrowLeft, Plus, ChevronRight, Play } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -7,9 +7,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Progress } from './components/ui/progress';
 import { Checkbox } from './components/ui/checkbox';
+import { Switch } from './components/ui/switch';
 import { GameCard } from './components/GameCard';
+import { GameplayScreen } from './components/GameplayScreen';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
+
+type GameMode = 'easy' | 'normal' | 'hard' | 'expert';
+
+interface GameModeConfig {
+  name: string;
+  photos: number;
+  cards: number;
+  grid: string;
+}
+
+const gameModes: Record<GameMode, GameModeConfig> = {
+  easy: { name: 'Fácil', photos: 4, cards: 8, grid: '2×4' },
+  normal: { name: 'Normal', photos: 6, cards: 12, grid: '3×4' },
+  hard: { name: 'Difícil', photos: 8, cards: 16, grid: '4×4' },
+  expert: { name: 'Experto', photos: 10, cards: 20, grid: '4×5' }
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('crear');
@@ -17,16 +35,35 @@ export default function App() {
   const [title, setTitle] = useState('');
   const [language, setLanguage] = useState('es');
   const [slug, setSlug] = useState('');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [showTime, setShowTime] = useState(true);
   const [showAttempts, setShowAttempts] = useState(true);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
   const [isPublic, setIsPublic] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [creationStep, setCreationStep] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showGameplay, setShowGameplay] = useState(false);
   const [photos, setPhotos] = useState([
     { id: 1, color: 'bg-purple-600' },
     { id: 2, color: 'bg-blue-700' },
     { id: 3, color: 'bg-green-600' },
     { id: 4, color: 'bg-yellow-600' }
   ]);
+
+  // Determine game mode automatically based on photo count
+  const getActiveMode = (): GameMode | null => {
+    const photoCount = photos.length;
+    if (photoCount === 4) return 'easy';
+    if (photoCount === 6) return 'normal';
+    if (photoCount === 8) return 'hard';
+    if (photoCount === 10) return 'expert';
+    return null;
+  };
+
+  const activeMode = getActiveMode();
+  const isValidPhotoCount = activeMode !== null;
 
   const games = [
     { id: 1, title: 'Test', status: 'publicado' as const, url: '/@pablo/test' },
@@ -47,7 +84,66 @@ export default function App() {
     setPhotos(photos.filter(photo => photo.id !== id));
   };
 
-  const photoProgress = (photos.length / 10) * 100;
+  const addPhotos = () => {
+    // Simulate adding a photo
+    const maxPhotos = 10;
+    const newId = Math.max(...photos.map(p => p.id), 0) + 1;
+    const colors = ['bg-pink-600', 'bg-orange-600', 'bg-indigo-600', 'bg-red-600', 'bg-cyan-600'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    if (photos.length < maxPhotos) {
+      setPhotos([...photos, { id: newId, color: randomColor }]);
+    } else {
+      toast.error('Máximo 10 fotos');
+    }
+  };
+
+  // Calculate progress to next mode or completion
+  const getNextModeTarget = (): number => {
+    const photoCount = photos.length;
+    if (photoCount < 4) return 4;
+    if (photoCount < 6) return 6;
+    if (photoCount < 8) return 8;
+    if (photoCount < 10) return 10;
+    return 10;
+  };
+
+  const nextTarget = getNextModeTarget();
+  const photoProgress = (photos.length / nextTarget) * 100;
+
+  const getLanguageDisplay = (lang: string) => {
+    const languages = {
+      es: { flag: '🇪🇸', name: 'Español' },
+      en: { flag: '🇺🇸', name: 'English' },
+      fr: { flag: '🇫🇷', name: 'Français' }
+    };
+    return languages[lang as keyof typeof languages] || languages.es;
+  };
+
+  // Generate slug from title
+  const generateSlug = (text: string): string => {
+    return text
+      .toLowerCase()
+      .trim()
+      // Remove accents and special characters
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      // Replace spaces with hyphens
+      .replace(/\s+/g, '-')
+      // Remove any remaining special characters except hyphens
+      .replace(/[^a-z0-9-]/g, '')
+      // Remove multiple consecutive hyphens
+      .replace(/-+/g, '-')
+      // Remove leading/trailing hyphens
+      .replace(/^-+|-+$/g, '');
+  };
+
+  // Auto-generate slug from title when entering Step 2
+  useEffect(() => {
+    if (step === 2 && !slugManuallyEdited && title) {
+      const generatedSlug = generateSlug(title);
+      setSlug(generatedSlug);
+    }
+  }, [step, title, slugManuallyEdited]);
 
   const handleContinueToStep2 = () => {
     setStep(2);
@@ -58,231 +154,395 @@ export default function App() {
   };
 
   const handleCreateGame = () => {
-    toast.success('¡Juego creado exitosamente!');
-    setActiveTab('mis-juegos');
-    setStep(1);
+    setIsCreating(true);
+    setCreationStep('Creando juego...');
+    
+    setTimeout(() => {
+      setCreationStep('Generando tablero...');
+    }, 800);
+    
+    setTimeout(() => {
+      setCreationStep('Preparando imágenes...');
+    }, 1600);
+    
+    setTimeout(() => {
+      setIsCreating(false);
+      setCreationStep('');
+      setShowSuccessModal(true);
+    }, 2400);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       <Toaster />
-      {/* Header */}
+      
+      {/* iOS-style Navigation Bar */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-sm font-medium text-gray-600 tracking-wide uppercase">Dashboard</h1>
-          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-            <Settings className="h-5 w-5 text-gray-600" />
+        {/* Top bar with title and settings */}
+        <div className="flex items-center justify-between h-11 px-4 pt-3">
+          <div className="w-10"></div>
+          <h1 className="font-semibold text-gray-900">
+            {activeTab === 'crear' ? 'Crear juego' : 'Mis juegos'}
+          </h1>
+          <Button variant="ghost" size="icon" className="h-9 w-9">
+            <Settings className="h-5 w-5 text-blue-600" />
           </Button>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="px-4 pb-3">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-11">
-              <TabsTrigger value="crear" className="text-sm font-medium">
-                Crear
-              </TabsTrigger>
-              <TabsTrigger value="mis-juegos" className="text-sm font-medium">
-                Mis juegos
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+        {/* iOS-style Segmented Control */}
+        <div className="px-4 py-3">
+          <div className="bg-gray-100 rounded-lg p-1 flex gap-1">
+            <button
+              onClick={() => setActiveTab('crear')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                activeTab === 'crear'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Crear
+            </button>
+            <button
+              onClick={() => setActiveTab('mis-juegos')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                activeTab === 'mis-juegos'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Mis juegos
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="px-4 py-6 max-w-2xl mx-auto">
+      <main className="pb-28">
         {activeTab === 'crear' ? (
           <>
             {step === 1 ? (
               <>
-                {/* Title Section */}
-                <div className="mb-6">
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-2">Crear juego</h2>
-                  <div className="flex items-center gap-2 mb-4">
-                    <p className="text-sm text-gray-600">Paso 1 de 2 - Información básica</p>
-                  </div>
-                  <Progress value={50} className="h-1.5" />
+                {/* Step indicator */}
+                <div className="bg-white px-4 py-4 border-b border-gray-200">
+                  <h2 className="text-xs font-semibold text-gray-500 text-center uppercase tracking-wide">Paso 1 de 2</h2>
+                  <p className="text-xl font-semibold text-gray-900 text-center mt-1">Información básica</p>
                 </div>
 
-                {/* Form */}
-                <div className="space-y-6">
-                  {/* Title Input */}
-                  <div className="space-y-2">
-                    <Label htmlFor="title" className="text-sm font-medium text-gray-700">
-                      Título
-                    </Label>
-                    <Input
-                      id="title"
-                      type="text"
-                      placeholder="Ej. Navidad 2026"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="h-12"
-                    />
+                {/* iOS Form Sections */}
+                <div className="mt-4 space-y-4">
+                  {/* Título Section */}
+                  <div className="bg-white border-y border-gray-200">
+                    <div className="px-4 py-3">
+                      <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">
+                        Título
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="Ej. Navidad 2026"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="border-0 h-11 px-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
+                      />
+                    </div>
                   </div>
 
-                  {/* Language Select */}
-                  <div className="space-y-2">
-                    <Label htmlFor="language" className="text-sm font-medium text-gray-700">
-                      Idioma del juego
-                    </Label>
-                    <Select value={language} onValueChange={setLanguage}>
-                      <SelectTrigger className="h-12">
-                        <SelectValue>
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🇪🇸</span>
-                            <span>Español</span>
-                          </div>
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="es">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🇪🇸</span>
-                            <span>Español</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="en">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🇺🇸</span>
-                            <span>English</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="fr">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🇫🇷</span>
-                            <span>Français</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {/* Idioma Section */}
+                  <div className="bg-white border-y border-gray-200">
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <label className="text-xs text-gray-500 uppercase tracking-wide mb-2 block">
+                        Idioma del juego
+                      </label>
+                    </div>
+                    <button
+                      onClick={() => {
+                        // In real app, this would open a picker
+                        toast.info('Selector de idioma');
+                      }}
+                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors min-h-[44px]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{getLanguageDisplay(language).flag}</span>
+                        <span className="text-base text-gray-900">{getLanguageDisplay(language).name}</span>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                    </button>
                   </div>
 
-                  {/* Photo Upload Section */}
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700">Fotos del juego</Label>
-                      <p className="text-sm text-gray-500 mt-1">
-                        JPG/PNG · máx 10 archivos · mínimo 2 para continuar
+                  {/* Game Mode Section - Auto-determined by photo count */}
+                  <div className="px-4">
+                    <div className="mb-3">
+                      <h3 className="text-xs text-gray-500 uppercase tracking-wide px-1">
+                        Modo de juego
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1 px-1">
+                        El modo se determina automáticamente según las fotos
                       </p>
                     </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(Object.keys(gameModes) as GameMode[]).map((mode) => {
+                        const config = gameModes[mode];
+                        const isActive = activeMode === mode;
+                        const photoDiff = config.photos - photos.length;
+                        const isLocked = photoDiff > 0;
+                        const isPassed = photos.length > config.photos;
+                        
+                        // Determine grid dimensions for mini preview
+                        const getGridDimensions = (grid: string): [number, number] => {
+                          const [cols, rows] = grid.split('×').map(Number);
+                          return [cols, rows];
+                        };
+                        const [cols, rows] = getGridDimensions(config.grid);
+                        
+                        return (
+                          <div
+                            key={mode}
+                            className={`p-4 rounded-xl border-2 transition-all ${
+                              isActive 
+                                ? 'border-green-600 bg-green-50' 
+                                : isPassed
+                                ? 'border-gray-200 bg-gray-50'
+                                : isLocked
+                                ? 'border-gray-200 bg-white'
+                                : 'border-gray-200 bg-white'
+                            }`}
+                          >
+                            <div className="flex flex-col items-center text-center">
+                              {/* Title */}
+                              <div className={`font-semibold mb-3 ${
+                                isActive ? 'text-green-900' : 'text-gray-900'
+                              }`}>
+                                {config.name}
+                              </div>
+                              
+                              {/* Mini Grid Preview */}
+                              <div className="mb-3">
+                                <div 
+                                  className="inline-grid gap-[5px]"
+                                  style={{
+                                    gridTemplateColumns: `repeat(${cols}, 11px)`,
+                                    gridTemplateRows: `repeat(${rows}, 11px)`
+                                  }}
+                                >
+                                  {Array.from({ length: cols * rows }).map((_, i) => (
+                                    <div 
+                                      key={i}
+                                      className={`w-[11px] h-[11px] rounded-[3px] border ${
+                                        isActive 
+                                          ? 'bg-green-100 border-green-300' 
+                                          : 'bg-gray-100 border-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              {/* Status Text */}
+                              {isActive && (
+                                <div className="text-xs font-medium text-green-600">
+                                  Modo activo
+                                </div>
+                              )}
+                              {isLocked && (
+                                <div className="text-xs font-medium text-blue-600">
+                                  Añade {photoDiff} foto{photoDiff !== 1 ? 's' : ''} más
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                    {/* Upload Area */}
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 bg-white hover:border-teal-500 hover:bg-teal-50/50 transition-colors cursor-pointer">
-                      <div className="flex flex-col items-center justify-center text-center">
-                        <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center mb-3">
-                          <Upload className="h-5 w-5 text-teal-600" />
+                  {/* Fotos Section - Card Group */}
+                  <div className="px-4">
+                    <div className="bg-gray-50 rounded-2xl p-5">
+                      {/* Header */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-sm font-medium text-gray-900">
+                            Fotos del juego
+                          </label>
+                          <span className="text-sm text-gray-500 font-medium">
+                            {photos.length} / {nextTarget} fotos
+                          </span>
                         </div>
-                        <h3 className="font-medium text-gray-900 mb-1">Añade hasta 10 fotos</h3>
-                        <p className="text-sm text-gray-500">Arrastra o selecciona</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {isValidPhotoCount 
+                            ? `Modo ${gameModes[activeMode!].name} activado`
+                            : `Añade ${nextTarget - photos.length} foto${nextTarget - photos.length !== 1 ? 's' : ''} más para activar el modo ${gameModes[(Object.keys(gameModes) as GameMode[]).find(m => gameModes[m].photos === nextTarget)!].name}`
+                          }
+                        </p>
                       </div>
-                    </div>
 
-                    {/* Progress */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">{photos.length} de 10 fotos añadidas</span>
-                        <span className="text-teal-600 font-medium">{photos.length}0%</span>
-                      </div>
-                      <Progress value={photoProgress} className="h-2" />
-                    </div>
+                      {/* Photo Grid with Add Button as First Tile */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Add Photos Tile */}
+                        <button
+                          onClick={addPhotos}
+                          disabled={photos.length >= 10}
+                          className="aspect-square rounded-xl border-2 border-dashed border-gray-300 bg-white flex flex-col items-center justify-center gap-2 hover:border-blue-600 hover:bg-blue-50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:border-gray-300 disabled:hover:bg-white"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                            <Plus className="h-5 w-5 text-white" />
+                          </div>
+                          <span className="text-sm text-gray-600 font-medium">Añadir</span>
+                        </button>
 
-                    {/* Photo Grid */}
-                    {photos.length > 0 && (
-                      <div className="grid grid-cols-2 gap-3">
+                        {/* Photo Thumbnails */}
                         {photos.map((photo) => (
-                          <div key={photo.id} className="relative group aspect-square rounded-xl overflow-hidden">
+                          <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden">
                             <div className={`w-full h-full ${photo.color}`} />
                             <button
                               onClick={() => removePhoto(photo.id)}
-                              className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-gray-100 active:scale-95"
+                              className="absolute top-2 right-2 w-7 h-7 bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center active:scale-95 transition-transform"
                               aria-label="Eliminar foto"
                             >
-                              <X className="h-4 w-4 text-gray-700" />
+                              <X className="h-4 w-4 text-white" />
                             </button>
                           </div>
                         ))}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </>
             ) : (
               <>
-                {/* Step 2: Advanced Configuration */}
-                <div className="mb-6">
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-2">Crear juego</h2>
-                  <div className="flex items-center gap-2 mb-4">
-                    <p className="text-sm text-gray-600">Paso 2 de 2 - Configuración avanzada</p>
-                  </div>
-                  <Progress value={100} className="h-1.5" />
+                {/* Step 2: Preview and Customize */}
+                <div className="bg-white px-4 py-4 border-b border-gray-200">
+                  <h2 className="text-sm text-gray-500 uppercase tracking-wide text-center">Paso 2 de 2</h2>
+                  <p className="text-lg font-semibold text-gray-900 text-center mt-1">Configuración del juego</p>
                 </div>
 
-                {/* Configuration Form */}
-                <div className="space-y-6">
-                  {/* Slug Input */}
-                  <div className="space-y-2">
-                    <Label htmlFor="slug" className="text-sm font-medium text-gray-700">
-                      Slug (opcional)
-                    </Label>
-                    <Input
-                      id="slug"
-                      type="text"
-                      placeholder="colores"
-                      value={slug}
-                      onChange={(e) => setSlug(e.target.value)}
-                      className="h-12"
-                    />
-                    <p className="text-sm text-gray-500 font-mono">
-                      memory-game-saas.vercel.app/username/{slug || 'colores'}
-                    </p>
+                <div className="mt-4 space-y-4">
+                  {/* Game Preview Card */}
+                  <div className="px-4">
+                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                      {/* Card Header */}
+                      <div className="p-4 border-b border-gray-200">
+                        <h3 className="text-base font-semibold text-gray-900 mb-1">
+                          {title || 'Sin título'}
+                        </h3>
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <span className="flex items-center gap-1">
+                            <span className="text-lg">{getLanguageDisplay(language).flag}</span>
+                            <span>{getLanguageDisplay(language).name}</span>
+                          </span>
+                          <span>•</span>
+                          <span>{photos.length} foto{photos.length !== 1 ? 's' : ''}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Photo Grid Preview */}
+                      <div className="p-4 bg-gray-50">
+                        <div className="grid grid-cols-2 gap-2 max-w-[200px] mx-auto">
+                          {photos.slice(0, 4).map((photo, index) => (
+                            <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
+                              <div className={`w-full h-full ${photo.color}`} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Vista Previa Button */}
+                      <button
+                        onClick={() => {
+                          setShowPreviewModal(false);
+                          setShowGameplay(true);
+                        }}
+                        className="w-full p-4 flex items-center justify-center gap-2 text-blue-600 font-medium hover:bg-blue-50 active:bg-blue-100 transition-colors border-t border-gray-200"
+                      >
+                        <Play className="h-5 w-5" />
+                        Probar juego
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Configuration Checkboxes */}
-                  <div className="space-y-4">
-                    <Label className="text-sm font-medium text-gray-700">Mostrar en el juego:</Label>
-                    
-                    <div className="flex items-center space-x-3">
-                      <Checkbox
-                        id="showTime"
-                        checked={showTime}
-                        onCheckedChange={(checked) => setShowTime(checked as boolean)}
-                      />
-                      <label
-                        htmlFor="showTime"
-                        className="text-base text-gray-900 cursor-pointer select-none"
+                  {/* Elementos del juego */}
+                  <div className="px-4">
+                    <h3 className="text-xs text-gray-500 uppercase tracking-wide mb-2 px-1">
+                      Elementos del juego
+                    </h3>
+                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                      {/* Tiempo */}
+                      <button
+                        onClick={() => setShowTime(!showTime)}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-200"
                       >
-                        Tiempo
-                      </label>
-                    </div>
+                        <div className="flex-1 text-left">
+                          <div className="text-base text-gray-900 font-medium">Tiempo</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Muestra el tiempo transcurrido</div>
+                        </div>
+                        <Switch
+                          checked={showTime}
+                          onCheckedChange={setShowTime}
+                          className="ml-3"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </button>
 
-                    <div className="flex items-center space-x-3">
-                      <Checkbox
-                        id="showAttempts"
-                        checked={showAttempts}
-                        onCheckedChange={(checked) => setShowAttempts(checked as boolean)}
-                      />
-                      <label
-                        htmlFor="showAttempts"
-                        className="text-base text-gray-900 cursor-pointer select-none"
+                      {/* Intentos */}
+                      <button
+                        onClick={() => setShowAttempts(!showAttempts)}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-200"
                       >
-                        Intentos
-                      </label>
-                    </div>
+                        <div className="flex-1 text-left">
+                          <div className="text-base text-gray-900 font-medium">Intentos</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Cuenta los intentos del jugador</div>
+                        </div>
+                        <Switch
+                          checked={showAttempts}
+                          onCheckedChange={setShowAttempts}
+                          className="ml-3"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </button>
 
-                    <div className="flex items-center space-x-3">
-                      <Checkbox
-                        id="showLeaderboard"
-                        checked={showLeaderboard}
-                        onCheckedChange={(checked) => setShowLeaderboard(checked as boolean)}
-                      />
-                      <label
-                        htmlFor="showLeaderboard"
-                        className="text-base text-gray-900 cursor-pointer select-none"
+                      {/* Leaderboard */}
+                      <button
+                        onClick={() => setShowLeaderboard(!showLeaderboard)}
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors"
                       >
-                        Leaderboard
-                      </label>
+                        <div className="flex-1 text-left">
+                          <div className="text-base text-gray-900 font-medium">Leaderboard</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Tabla de clasificación pública</div>
+                        </div>
+                        <Switch
+                          checked={showLeaderboard}
+                          onCheckedChange={setShowLeaderboard}
+                          className="ml-3"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* URL del juego */}
+                  <div className="px-4">
+                    <div className="mb-2 px-1">
+                      <h3 className="text-xs text-gray-500 uppercase tracking-wide">
+                        URL del juego (opcional)
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Esto cambiará el enlace del juego
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-200 p-4">
+                      <Input
+                        type="text"
+                        placeholder="ej: navidad-2026"
+                        value={slug}
+                        onChange={(e) => {
+                          setSlug(e.target.value);
+                          setSlugManuallyEdited(true);
+                        }}
+                        className="border-gray-300 h-11 text-base mb-2"
+                      />
+                      <p className="text-xs font-mono break-all px-1">
+                        <span className="text-gray-400">memory-game.com/user/</span>
+                        <span className="text-gray-900 font-semibold">{slug || 'juego-sin-nombre'}</span>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -292,14 +552,14 @@ export default function App() {
         ) : (
           <>
             {/* My Games Section */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">
+            <div className="bg-white px-4 py-4 border-b border-gray-200 mt-4">
+              <h2 className="text-xl font-semibold text-gray-900">
                 {games.length} juego{games.length !== 1 ? 's' : ''} creado{games.length !== 1 ? 's' : ''}
               </h2>
             </div>
 
             {/* Games List */}
-            <div className="space-y-4">
+            <div className="p-4 space-y-3">
               {games.map((game) => (
                 <GameCard
                   key={game.id}
@@ -320,16 +580,30 @@ export default function App() {
             {step === 1 ? (
               <Button 
                 className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg"
-                disabled={photos.length < 2}
+                disabled={!isValidPhotoCount}
                 onClick={handleContinueToStep2}
               >
-                {photos.length < 2 ? (
+                {!isValidPhotoCount ? (
                   <span className="flex items-center gap-2">
-                    Añade al menos 2 fotos para continuar
+                    {photos.length < 4 
+                      ? `Añade ${4 - photos.length} foto${4 - photos.length !== 1 ? 's' : ''} más para continuar`
+                      : (() => {
+                          // Find closest mode (either above or below)
+                          const validModes = [4, 6, 8, 10];
+                          const below = validModes.filter(m => m < photos.length).pop() || 0;
+                          const above = validModes.find(m => m > photos.length) || 10;
+                          
+                          const diffBelow = photos.length - below;
+                          const diffAbove = above - photos.length;
+                          const minDiff = Math.min(diffBelow, diffAbove);
+                          
+                          return `Añade o elimina ${minDiff} foto${minDiff !== 1 ? 's' : ''} para activar un modo`;
+                        })()
+                    }
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    Continuar
+                    Continuar con modo {gameModes[activeMode!].name}
                     <Check className="h-4 w-4" />
                   </span>
                 )}
@@ -344,10 +618,11 @@ export default function App() {
                   Atrás
                 </Button>
                 <Button 
-                  className="flex-1 h-12 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg"
+                  className="flex-1 h-12 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg disabled:opacity-70"
                   onClick={handleCreateGame}
+                  disabled={isCreating}
                 >
-                  Crear juego
+                  {isCreating ? creationStep : 'Crear juego'}
                 </Button>
               </div>
             )}
@@ -357,6 +632,102 @@ export default function App() {
 
       {/* Bottom spacing to prevent content being hidden by fixed footer */}
       {activeTab === 'crear' && <div className="h-24" />}
+
+      {/* Preview Modal */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+          {/* Close button */}
+          <div className="absolute top-4 right-4 z-10">
+            <button
+              onClick={() => setShowPreviewModal(false)}
+              className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-colors"
+            >
+              <X className="h-6 w-6 text-white" />
+            </button>
+          </div>
+
+          {/* Game Preview Content */}
+          <div className="flex-1 flex flex-col items-center justify-center p-6">
+            <h2 className="text-white text-2xl font-bold mb-2">{title || 'Sin título'}</h2>
+            <p className="text-white/70 text-sm mb-8">Vista previa del juego</p>
+            
+            {/* Memory Game Grid */}
+            <div className="grid grid-cols-2 gap-3 max-w-[280px] w-full">
+              {photos.slice(0, 4).map((photo) => (
+                <div key={photo.id} className="aspect-square rounded-xl overflow-hidden">
+                  <div className={`w-full h-full ${photo.color}`} />
+                </div>
+              ))}
+            </div>
+
+            {/* Game Stats - if enabled */}
+            <div className="mt-8 flex items-center gap-6 text-white/80 text-sm">
+              {showTime && <span>⏱️ 0:00</span>}
+              {showAttempts && <span>🔄 0 intentos</span>}
+            </div>
+          </div>
+
+          {/* Exit button */}
+          <div className="p-6">
+            <Button
+              onClick={() => setShowPreviewModal(false)}
+              className="w-full h-12 bg-white text-gray-900 hover:bg-gray-100 font-medium rounded-lg"
+            >
+              Salir
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🎉</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Juego creado</h2>
+              <p className="text-gray-600 mb-8">
+                Tu juego está listo para compartir
+              </p>
+              
+              <div className="space-y-3">
+                <Button
+                  className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg"
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    setShowGameplay(true);
+                  }}
+                >
+                  Jugar ahora
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full h-12 border-gray-300 hover:bg-gray-50 font-medium rounded-lg"
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    setActiveTab('mis-juegos');
+                    setStep(1);
+                    toast.success('Link copiado al portapapeles');
+                  }}
+                >
+                  Compartir
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gameplay Screen */}
+      {showGameplay && (
+        <GameplayScreen
+          title={title || 'Sin título'}
+          photos={photos}
+          showTime={showTime}
+          showAttempts={showAttempts}
+          onClose={() => setShowGameplay(false)}
+        />
+      )}
     </div>
   );
 }
