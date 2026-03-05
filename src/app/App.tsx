@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, X, Upload, Check, ArrowLeft, Plus, ChevronRight, Play, LogOut, Trophy } from 'lucide-react';
+import { Settings, X, Upload, Check, ArrowLeft, Plus, ChevronRight, Play, LogOut, Trophy, MessageCircle } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -28,6 +28,14 @@ import { ActivityPage } from './components/admin/ActivityPage';
 import { AuthPage } from './components/AuthPage';
 import { NotFoundScreen } from './components/error-states/NotFoundScreen';
 import { ServerErrorScreen } from './components/error-states/ServerErrorScreen';
+import { TermsOfService } from './components/TermsOfService';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { CookieConsent } from './components/CookieConsent';
+import { DataPrivacy } from './components/DataPrivacy';
+import { SupportScreen } from './components/SupportScreen';
+import { BugReportForm } from './components/BugReportForm';
+import { ContactSupportForm } from './components/ContactSupportForm';
+import { HelpArticles } from './components/HelpArticles';
 import { GameNotFoundScreen } from './components/error-states/GameNotFoundScreen';
 import { GamePrivateScreen } from './components/error-states/GamePrivateScreen';
 import { NoGamesYetScreen } from './components/error-states/NoGamesYetScreen';
@@ -75,6 +83,30 @@ export default function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardSource, setLeaderboardSource] = useState<'direct' | 'gameDetails'>('direct');
   const [showErrorState, setShowErrorState] = useState<'404' | '500' | 'gameNotFound' | 'gamePrivate' | 'noGames' | 'leaderboardEmpty' | null>(null);
+  
+  // Legal and privacy screens
+  const [showTerms, setShowTerms] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showDataPrivacy, setShowDataPrivacy] = useState(false);
+  const [showCookieConsent, setShowCookieConsent] = useState(false);
+  const [cookieConsent, setCookieConsent] = useState<'all' | 'necessary' | null>(null);
+
+  // Support screens
+  const [showSupport, setShowSupport] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
+  const [showContactSupport, setShowContactSupport] = useState(false);
+  const [showHelpArticles, setShowHelpArticles] = useState(false);
+
+  // Check for cookie consent on mount
+  useEffect(() => {
+    const consent = localStorage.getItem('cookieConsent');
+    if (!consent) {
+      // Show cookie consent after a short delay
+      setTimeout(() => setShowCookieConsent(true), 1000);
+    } else {
+      setCookieConsent(consent as 'all' | 'necessary');
+    }
+  }, []);
   const [photos, setPhotos] = useState([
     { id: 1, color: 'bg-purple-600' },
     { id: 2, color: 'bg-blue-700' },
@@ -222,6 +254,23 @@ export default function App() {
     }, 2400);
   };
 
+  const handleCookieAcceptAll = () => {
+    localStorage.setItem('cookieConsent', 'all');
+    setCookieConsent('all');
+    setShowCookieConsent(false);
+  };
+
+  const handleCookieAcceptNecessary = () => {
+    localStorage.setItem('cookieConsent', 'necessary');
+    setCookieConsent('necessary');
+    setShowCookieConsent(false);
+  };
+
+  const handleCookieMoreInfo = () => {
+    setShowCookieConsent(false);
+    setShowPrivacy(true);
+  };
+
   // Show auth page if not authenticated
   if (!isAuthenticated) {
     return (
@@ -302,6 +351,10 @@ export default function App() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => setShowSupport(true)}>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Ayuda y soporte
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowLeaderboard(true)}>
                 <Trophy className="h-4 w-4 mr-2" />
                 Ver Leaderboard (Demo)
@@ -331,6 +384,22 @@ export default function App() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowErrorState('leaderboardEmpty')}>
                 Leaderboard vacío
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">
+                Legal y Privacidad
+              </div>
+              <DropdownMenuItem onClick={() => setShowTerms(true)}>
+                Términos de servicio
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowPrivacy(true)}>
+                Política de privacidad
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowDataPrivacy(true)}>
+                Privacidad y datos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowCookieConsent(true)}>
+                Configurar cookies
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -1164,6 +1233,90 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Legal and Privacy Screens */}
+      {showTerms && (
+        <TermsOfService onBack={() => setShowTerms(false)} />
+      )}
+
+      {showPrivacy && (
+        <PrivacyPolicy onBack={() => setShowPrivacy(false)} />
+      )}
+
+      {showDataPrivacy && (
+        <DataPrivacy 
+          onBack={() => setShowDataPrivacy(false)}
+          onPrivacyClick={() => {
+            setShowDataPrivacy(false);
+            setShowPrivacy(true);
+          }}
+        />
+      )}
+
+      {/* Support Screens */}
+      {showSupport && (
+        <SupportScreen
+          onBack={() => setShowSupport(false)}
+          onHelpArticles={() => {
+            setShowSupport(false);
+            setShowHelpArticles(true);
+          }}
+          onReportBug={() => {
+            setShowSupport(false);
+            setShowBugReport(true);
+          }}
+          onContactSupport={() => {
+            setShowSupport(false);
+            setShowContactSupport(true);
+          }}
+          onPrivacyPolicy={() => {
+            setShowSupport(false);
+            setShowPrivacy(true);
+          }}
+          onTermsOfService={() => {
+            setShowSupport(false);
+            setShowTerms(true);
+          }}
+        />
+      )}
+
+      {showHelpArticles && (
+        <HelpArticles
+          onBack={() => {
+            setShowHelpArticles(false);
+            setShowSupport(true);
+          }}
+          onArticleClick={(articleId) => {
+            toast.info(`Abriendo artículo: ${articleId}`);
+          }}
+        />
+      )}
+
+      {showBugReport && (
+        <BugReportForm
+          onBack={() => {
+            setShowBugReport(false);
+            setShowSupport(true);
+          }}
+        />
+      )}
+
+      {showContactSupport && (
+        <ContactSupportForm
+          onBack={() => {
+            setShowContactSupport(false);
+            setShowSupport(true);
+          }}
+        />
+      )}
+
+      {/* Cookie Consent Modal */}
+      <CookieConsent
+        isVisible={showCookieConsent}
+        onAcceptAll={handleCookieAcceptAll}
+        onAcceptNecessary={handleCookieAcceptNecessary}
+        onMoreInfo={handleCookieMoreInfo}
+      />
     </div>
   );
 }
