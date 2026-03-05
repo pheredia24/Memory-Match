@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, X, Upload, Check, ArrowLeft, Plus, ChevronRight, Play, LogOut, Trophy, MessageCircle } from 'lucide-react';
+import { Settings, X, Upload, Check, ArrowLeft, Plus, ChevronRight, Play, LogOut, Trophy, MessageCircle, Sparkles, User } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -36,6 +36,13 @@ import { SupportScreen } from './components/SupportScreen';
 import { BugReportForm } from './components/BugReportForm';
 import { ContactSupportForm } from './components/ContactSupportForm';
 import { HelpArticles } from './components/HelpArticles';
+import { OnboardingScreen } from './components/OnboardingScreen';
+import { GameLandingScreen } from './components/GameLandingScreen';
+import { AccountSettings } from './components/AccountSettings';
+import { EditProfileScreen } from './components/EditProfileScreen';
+import { ChangePasswordScreen } from './components/ChangePasswordScreen';
+import { ChangeEmailScreen } from './components/ChangeEmailScreen';
+import { PrivacyDataScreen } from './components/PrivacyDataScreen';
 import { GameNotFoundScreen } from './components/error-states/GameNotFoundScreen';
 import { GamePrivateScreen } from './components/error-states/GamePrivateScreen';
 import { NoGamesYetScreen } from './components/error-states/NoGamesYetScreen';
@@ -64,6 +71,8 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'user' | 'admin'>('user');
   const [adminPage, setAdminPage] = useState<'overview' | 'users' | 'games' | 'media' | 'activity'>('overview');
   const [activeTab, setActiveTab] = useState('crear');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showGameLanding, setShowGameLanding] = useState(false);
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
   const [language, setLanguage] = useState('es');
@@ -97,16 +106,35 @@ export default function App() {
   const [showContactSupport, setShowContactSupport] = useState(false);
   const [showHelpArticles, setShowHelpArticles] = useState(false);
 
+  // Account settings screens
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showChangeEmail, setShowChangeEmail] = useState(false);
+  const [showPrivacyData, setShowPrivacyData] = useState(false);
+
+  // Check for onboarding on mount (only for authenticated users)
+  useEffect(() => {
+    if (isAuthenticated) {
+      const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+      if (!onboardingCompleted) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [isAuthenticated]);
+
   // Check for cookie consent on mount
   useEffect(() => {
     const consent = localStorage.getItem('cookieConsent');
     if (!consent) {
-      // Show cookie consent after a short delay
-      setTimeout(() => setShowCookieConsent(true), 1000);
+      // Show cookie consent after a short delay (only if not showing onboarding)
+      if (!showOnboarding) {
+        setTimeout(() => setShowCookieConsent(true), 1000);
+      }
     } else {
       setCookieConsent(consent as 'all' | 'necessary');
     }
-  }, []);
+  }, [showOnboarding]);
   const [photos, setPhotos] = useState([
     { id: 1, color: 'bg-purple-600' },
     { id: 2, color: 'bg-blue-700' },
@@ -332,6 +360,33 @@ export default function App() {
     <div className="min-h-screen bg-gray-100">
       <Toaster />
       
+      {/* Onboarding Screen */}
+      {showOnboarding && (
+        <OnboardingScreen
+          onComplete={() => {
+            setShowOnboarding(false);
+            setActiveTab('crear');
+            // Show cookie consent after onboarding
+            setTimeout(() => {
+              const consent = localStorage.getItem('cookieConsent');
+              if (!consent) {
+                setShowCookieConsent(true);
+              }
+            }, 500);
+          }}
+          onSkip={() => {
+            setShowOnboarding(false);
+            // Show cookie consent after skipping
+            setTimeout(() => {
+              const consent = localStorage.getItem('cookieConsent');
+              if (!consent) {
+                setShowCookieConsent(true);
+              }
+            }, 500);
+          }}
+        />
+      )}
+      
       {/* iOS-style Navigation Bar */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         {/* Top bar with title and settings */}
@@ -351,10 +406,15 @@ export default function App() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => setShowAccountSettings(true)}>
+                <User className="h-4 w-4 mr-2" />
+                Configuración de cuenta
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowSupport(true)}>
                 <MessageCircle className="h-4 w-4 mr-2" />
                 Ayuda y soporte
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setShowLeaderboard(true)}>
                 <Trophy className="h-4 w-4 mr-2" />
                 Ver Leaderboard (Demo)
@@ -362,6 +422,14 @@ export default function App() {
               <DropdownMenuItem onClick={() => setViewMode('admin')}>
                 <Settings className="h-4 w-4 mr-2" />
                 Admin Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowOnboarding(true)}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Ver onboarding
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowGameLanding(true)}>
+                <Play className="h-4 w-4 mr-2" />
+                Ver landing de juego
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">
@@ -1306,6 +1374,114 @@ export default function App() {
           onBack={() => {
             setShowContactSupport(false);
             setShowSupport(true);
+          }}
+        />
+      )}
+
+      {/* Game Landing Screen */}
+      {showGameLanding && (
+        <GameLandingScreen
+          gameTitle="Navidad 2026"
+          creatorName="Ana"
+          photoCount={6}
+          photos={[
+            'bg-gradient-to-br from-red-400 to-pink-500',
+            'bg-gradient-to-br from-green-400 to-emerald-500',
+            'bg-gradient-to-br from-blue-400 to-cyan-500',
+            'bg-gradient-to-br from-purple-400 to-violet-500',
+            'bg-gradient-to-br from-yellow-400 to-orange-500',
+            'bg-gradient-to-br from-indigo-400 to-blue-500',
+          ]}
+          totalPlays={127}
+          bestTime="32.5s"
+          onPlay={() => {
+            setShowGameLanding(false);
+            toast.success('¡Iniciando juego!');
+          }}
+          onViewLeaderboard={() => {
+            toast.info('Abriendo leaderboard...');
+          }}
+          onCreateGame={() => {
+            setShowGameLanding(false);
+            setActiveTab('crear');
+            toast.info('¡Crea tu propio juego!');
+          }}
+          onClose={() => setShowGameLanding(false)}
+        />
+      )}
+
+      {/* Account Settings */}
+      {showAccountSettings && (
+        <AccountSettings
+          onBack={() => setShowAccountSettings(false)}
+          onEditProfile={() => {
+            setShowAccountSettings(false);
+            setShowEditProfile(true);
+          }}
+          onChangePassword={() => {
+            setShowAccountSettings(false);
+            setShowChangePassword(true);
+          }}
+          onChangeEmail={() => {
+            setShowAccountSettings(false);
+            setShowChangeEmail(true);
+          }}
+          onPrivacyData={() => {
+            setShowAccountSettings(false);
+            setShowPrivacyData(true);
+          }}
+          onLogout={() => {
+            setShowAccountSettings(false);
+            setIsAuthenticated(false);
+            toast.success('Sesión cerrada correctamente');
+          }}
+        />
+      )}
+
+      {/* Edit Profile */}
+      {showEditProfile && (
+        <EditProfileScreen
+          onBack={() => {
+            setShowEditProfile(false);
+            setShowAccountSettings(true);
+          }}
+        />
+      )}
+
+      {/* Change Password */}
+      {showChangePassword && (
+        <ChangePasswordScreen
+          onBack={() => {
+            setShowChangePassword(false);
+            setShowAccountSettings(true);
+          }}
+        />
+      )}
+
+      {/* Change Email */}
+      {showChangeEmail && (
+        <ChangeEmailScreen
+          onBack={() => {
+            setShowChangeEmail(false);
+            setShowAccountSettings(true);
+          }}
+        />
+      )}
+
+      {/* Privacy & Data */}
+      {showPrivacyData && (
+        <PrivacyDataScreen
+          onBack={() => {
+            setShowPrivacyData(false);
+            setShowAccountSettings(true);
+          }}
+          onPrivacyPolicy={() => {
+            // Don't close privacy data, just show privacy policy on top
+            setShowPrivacy(true);
+          }}
+          onTermsOfService={() => {
+            // Don't close privacy data, just show terms on top
+            setShowTerms(true);
           }}
         />
       )}
