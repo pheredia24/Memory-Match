@@ -18,6 +18,7 @@
 - For README updates in this repo, inspecting `src/app/App.tsx` and `src/app/components/AuthPage.tsx` gives the most accurate feature/flow documentation.
 - For full screen inventories in this repo, combine `App.tsx` conditional renders with all `src/app/components/*.tsx` screens and `src/imports/*.md` design briefs.
 - `src/imports/*.md` contains functional requirements that are stricter/more complete than current UI wiring; include both implemented behavior and intended design behavior in PRD output.
+- For React Native migration planning in this repo, start from `prd/screens-index.md` for full scope and then map each `prd/section-*.md` domain to implementation phases.
 
 ## Patterns That Don't Work
 - Assuming a detached `nohup npm run dev ...` launch is ready after a fixed 2s delay; it may exit silently here, so verify process/logs and retry with TTY if needed.
@@ -28,4 +29,5 @@
 - `origin/main` later advanced from `a61eb71` to `5e81234`, adding support/legal screens and reusable error-state components.
 - `origin/main` advanced from `5e81234` to `5f0de22`, adding onboarding, game landing, and account settings/security/privacy screen set (`AccountSettings`, `EditProfile`, `ChangePassword`, `ChangeEmail`, `PrivacyData`).
 - The current app is a front-end prototype with simulated auth and mock game/admin data (no backend integration yet).
+- `src/app/App.tsx` currently centralizes navigation via boolean/state toggles instead of route-based navigation; React Native migration should prioritize introducing a navigator early.
 - `npm run build` succeeds, but Vite reports a large JS chunk (`dist/assets/index-*.js` > 500 kB); code-splitting is a likely next optimization.
