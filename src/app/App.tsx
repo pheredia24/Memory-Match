@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, X, Upload, Check, ArrowLeft, Plus, ChevronRight, Play, LogOut } from 'lucide-react';
+import { Settings, X, Upload, Check, ArrowLeft, Plus, ChevronRight, Play, LogOut, Trophy } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -17,6 +17,8 @@ import {
 } from './components/ui/dropdown-menu';
 import { GameCard } from './components/GameCard';
 import { GameplayScreen } from './components/GameplayScreen';
+import { GameDetailsScreen } from './components/GameDetailsScreen';
+import { LeaderboardScreen } from './components/LeaderboardScreen';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { OverviewPage } from './components/admin/OverviewPage';
 import { UsersPage } from './components/admin/UsersPage';
@@ -55,13 +57,16 @@ export default function App() {
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [showTime, setShowTime] = useState(true);
   const [showAttempts, setShowAttempts] = useState(true);
-  const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const [enableLeaderboard, setEnableLeaderboard] = useState(true);
   const [isPublic, setIsPublic] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [creationStep, setCreationStep] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showGameplay, setShowGameplay] = useState(false);
+  const [showGameDetails, setShowGameDetails] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboardSource, setLeaderboardSource] = useState<'direct' | 'gameDetails'>('direct');
   const [photos, setPhotos] = useState([
     { id: 1, color: 'bg-purple-600' },
     { id: 2, color: 'bg-blue-700' },
@@ -289,6 +294,10 @@ export default function App() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowLeaderboard(true)}>
+                <Trophy className="h-4 w-4 mr-2" />
+                Ver Leaderboard (Demo)
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setViewMode('admin')}>
                 <Settings className="h-4 w-4 mr-2" />
                 Admin Dashboard
@@ -620,7 +629,7 @@ export default function App() {
 
                       {/* Leaderboard */}
                       <div
-                        onClick={() => setShowLeaderboard(!showLeaderboard)}
+                        onClick={() => setEnableLeaderboard(!enableLeaderboard)}
                         className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer"
                       >
                         <div className="flex-1 text-left">
@@ -628,8 +637,8 @@ export default function App() {
                           <div className="text-xs text-gray-500 mt-0.5">Tabla de clasificación pública</div>
                         </div>
                         <Switch
-                          checked={showLeaderboard}
-                          onCheckedChange={setShowLeaderboard}
+                          checked={enableLeaderboard}
+                          onCheckedChange={setEnableLeaderboard}
                           className="ml-3"
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -685,6 +694,7 @@ export default function App() {
                   title={game.title}
                   status={game.status}
                   url={game.url}
+                  onViewDetails={() => setShowGameDetails(true)}
                 />
               ))}
             </div>
@@ -848,6 +858,225 @@ export default function App() {
           onCreateGame={() => {
             setShowGameplay(false);
             setIsAuthenticated(false);
+          }}
+        />
+      )}
+
+      {/* Game Details Screen */}
+      {showGameDetails && (
+        <GameDetailsScreen
+          game={{
+            id: 'navidad-2026',
+            title: 'Navidad 2026',
+            photoCount: 6,
+            difficulty: 'Medio',
+            createdAt: new Date('2026-12-15'),
+            photos: [
+              'https://images.unsplash.com/photo-1512389142860-9c449e58a543?w=400',
+              'https://images.unsplash.com/photo-1482517967863-00e15c9b44be?w=400',
+              'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=400',
+              'https://images.unsplash.com/photo-1576919228236-a097c32a5cd4?w=400',
+              'https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=400',
+              'https://images.unsplash.com/photo-1514846226882-28b324ef7f28?w=400',
+            ],
+            stats: {
+              totalPlays: 247,
+              uniqueUsers: 89,
+              completionRate: 73,
+              averageAttempts: 18,
+              averageTime: '2:34'
+            },
+            recentGames: [
+              {
+                id: '1',
+                date: '5 mar — 16:32',
+                attempts: 16,
+                completionTime: '2:15'
+              },
+              {
+                id: '2',
+                date: '4 mar — 19:45',
+                attempts: 22,
+                completionTime: '3:08'
+              },
+              {
+                id: '3',
+                date: '4 mar — 16:20',
+                attempts: 14,
+                completionTime: '1:52'
+              },
+              {
+                id: '4',
+                date: '3 mar — 11:15',
+                attempts: 20,
+                completionTime: '2:45'
+              },
+              {
+                id: '5',
+                date: '2 mar — 22:30',
+                attempts: 18,
+                completionTime: '2:20'
+              }
+            ],
+            topPlayers: [
+              { rank: 1, username: 'Ana García', attempts: 8, completionTime: '0:41' },
+              { rank: 2, username: 'Marcos López', attempts: 9, completionTime: '0:52' },
+              { rank: 3, username: 'Laura Martínez', attempts: 10, completionTime: '1:02' }
+            ]
+          }}
+          onBack={() => setShowGameDetails(false)}
+          onEdit={() => {
+            setShowGameDetails(false);
+            setActiveTab('crear');
+            setStep(1);
+            toast.info('Editando juego');
+          }}
+          onShare={() => {
+            toast.success('Compartir juego');
+          }}
+          onViewLeaderboard={() => {
+            setLeaderboardSource('gameDetails');
+            setShowGameDetails(false);
+            setShowLeaderboard(true);
+          }}
+          onViewAllPlays={() => {
+            toast.info('Mostrando todas las partidas');
+          }}
+        />
+      )}
+
+      {/* Leaderboard Screen */}
+      {showLeaderboard && (
+        <LeaderboardScreen
+          gameTitle="Navidad 2026"
+          entries={[
+            {
+              rank: 1,
+              userId: '1',
+              username: 'Carlos M.',
+              avatar: 'https://i.pravatar.cc/150?img=12',
+              attempts: 12,
+              completionTime: '01:24'
+            },
+            {
+              rank: 2,
+              userId: '2',
+              username: 'Ana García',
+              avatar: 'https://i.pravatar.cc/150?img=5',
+              attempts: 14,
+              completionTime: '01:45'
+            },
+            {
+              rank: 3,
+              userId: '3',
+              username: 'Miguel Torres',
+              avatar: 'https://i.pravatar.cc/150?img=33',
+              attempts: 15,
+              completionTime: '01:52'
+            },
+            {
+              rank: 4,
+              userId: '4',
+              username: 'Laura Sánchez',
+              avatar: 'https://i.pravatar.cc/150?img=9',
+              attempts: 16,
+              completionTime: '02:03'
+            },
+            {
+              rank: 5,
+              userId: '5',
+              username: 'Pedro López',
+              avatar: 'https://i.pravatar.cc/150?img=15',
+              attempts: 18,
+              completionTime: '02:15'
+            },
+            {
+              rank: 6,
+              userId: '6',
+              username: 'María Rodríguez',
+              avatar: 'https://i.pravatar.cc/150?img=20',
+              attempts: 19,
+              completionTime: '02:28'
+            },
+            {
+              rank: 7,
+              userId: '7',
+              username: 'Juan Martínez',
+              avatar: 'https://i.pravatar.cc/150?img=13',
+              attempts: 20,
+              completionTime: '02:34'
+            },
+            {
+              rank: 8,
+              userId: '8',
+              username: 'Sofia Hernández',
+              avatar: 'https://i.pravatar.cc/150?img=10',
+              attempts: 22,
+              completionTime: '02:47'
+            },
+            {
+              rank: 9,
+              userId: '9',
+              username: 'Diego Ruiz',
+              avatar: 'https://i.pravatar.cc/150?img=14',
+              attempts: 23,
+              completionTime: '02:55'
+            },
+            {
+              rank: 10,
+              userId: '10',
+              username: 'Isabella Gómez',
+              avatar: 'https://i.pravatar.cc/150?img=16',
+              attempts: 24,
+              completionTime: '03:02'
+            },
+            {
+              rank: 11,
+              userId: '11',
+              username: 'Alejandro Cruz',
+              avatar: 'https://i.pravatar.cc/150?img=11',
+              attempts: 25,
+              completionTime: '03:15'
+            },
+            {
+              rank: 12,
+              userId: '12',
+              username: 'Valentina Díaz',
+              avatar: 'https://i.pravatar.cc/150?img=23',
+              attempts: 26,
+              completionTime: '03:22'
+            },
+            {
+              rank: 13,
+              userId: '13',
+              username: 'Daniel Moreno',
+              avatar: 'https://i.pravatar.cc/150?img=17',
+              attempts: 28,
+              completionTime: '03:38'
+            },
+            {
+              rank: 14,
+              userId: '14',
+              username: 'Camila Vargas',
+              avatar: 'https://i.pravatar.cc/150?img=24',
+              attempts: 29,
+              completionTime: '03:45'
+            },
+            {
+              rank: 15,
+              userId: '15',
+              username: 'Javier Reyes',
+              avatar: 'https://i.pravatar.cc/150?img=18',
+              attempts: 30,
+              completionTime: '03:52'
+            }
+          ]}
+          onBack={() => {
+            setShowLeaderboard(false);
+            if (leaderboardSource === 'gameDetails') {
+              setShowGameDetails(true);
+              setLeaderboardSource('direct');
+            }
           }}
         />
       )}

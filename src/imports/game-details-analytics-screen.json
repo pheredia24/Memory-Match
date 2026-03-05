@@ -1,0 +1,113 @@
+#mobile_app
+
+Task: Refine the Game Details / Analytics screen to be more compact and reduce vertical spacing.
+
+Context:
+The current design spreads information too much and uses oversized metric cards. The new design should prioritize density and readability while maintaining the existing visual style.
+
+Changes:
+
+Preview Section
+
+Remove the "Vista previa" title and container card.
+
+Instead display the game photos directly below the game title as a horizontal row of thumbnails.
+
+Example layout:
+
+Game title
+Row of photo thumbnails
+
+Thumbnails:
+- rounded corners
+- square aspect ratio
+- evenly spaced
+- scrollable horizontally if needed
+
+Metrics Section
+
+Keep all 5 metrics but compress them into a compact grid.
+
+Remove metric icons.
+
+Metrics to display:
+- Jugadas
+- Usuarios únicos
+- Tasa de finalización
+- Intentos promedio
+- Tiempo promedio
+
+Layout:
+
+2-column grid for the first 4 metrics
+Final metric spans full width.
+
+Example:
+
+Jugadas            Usuarios únicos
+247                89
+
+Tasa de finalización   Intentos promedio
+73%                    18
+
+Tiempo promedio
+2:34
+
+Metric cards should:
+- have reduced padding
+- emphasize the numeric value
+- remove large icons
+
+Leaderboard Section
+
+Add a "Leaderboard" section showing the top 3 players.
+
+Each row includes:
+Rank medal icon
+Player name
+Attempts
+Completion time
+
+Example:
+
+🥇 Ana      8 intentos   0:41
+🥈 Marcos   9 intentos   0:52
+🥉 Laura   10 intentos   1:02
+
+Add a link below:
+
+"Ver leaderboard completo"
+
+Recent Plays
+
+Rename section to:
+
+"Últimas partidas"
+
+Show only the two most recent entries.
+
+Example row:
+
+5 mar — 16 intentos • 2:15
+
+Add link:
+
+"Ver todas"
+
+Share Section
+
+Keep existing buttons:
+
+Primary button:
+"Compartir juego"
+
+Secondary button:
+"Copiar enlace"
+
+Constraints:
+
+- Reduce vertical spacing between sections
+- Keep the screen scannable
+- Avoid oversized cards
+- Maintain visual consistency with the rest of the app
+- Mobile-first layout

@@ -3,6 +3,9 @@ import { Eye, EyeOff, Check, Mail, Lock } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { EmailVerificationScreen } from './EmailVerificationScreen';
+import { ForgotPasswordScreen } from './ForgotPasswordScreen';
+import { ResetPasswordScreen } from './ResetPasswordScreen';
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
@@ -10,6 +13,7 @@ interface AuthPageProps {
 
 export function AuthPage({ onAuthSuccess }: AuthPageProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [screen, setScreen] = useState<'auth' | 'forgot-password' | 'reset-password'>('auth');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -71,37 +75,33 @@ export function AuthPage({ onAuthSuccess }: AuthPageProps) {
     }, 1000);
   };
 
+  // Screen routing
   if (showEmailVerification) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Mail className="h-8 w-8 text-teal-600" />
-          </div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Check your email</h2>
-          <p className="text-gray-600 mb-6">
-            We've sent a verification link to <span className="font-medium text-gray-900">{email}</span>
-          </p>
-          <p className="text-sm text-gray-500 mb-6">
-            Click the link in the email to verify your account and start creating games.
-          </p>
-          <Button
-            onClick={() => {
-              setShowEmailVerification(false);
-              onAuthSuccess();
-            }}
-            className="w-full bg-teal-600 hover:bg-teal-700"
-          >
-            Continue to Dashboard
-          </Button>
-          <button
-            onClick={() => setShowEmailVerification(false)}
-            className="text-sm text-teal-600 hover:text-teal-700 mt-4"
-          >
-            Back to sign in
-          </button>
-        </div>
-      </div>
+      <EmailVerificationScreen
+        email={email}
+        onVerified={onAuthSuccess}
+        onChangeEmail={() => setShowEmailVerification(false)}
+      />
+    );
+  }
+
+  if (screen === 'forgot-password') {
+    return (
+      <ForgotPasswordScreen
+        onBackToSignIn={() => setScreen('auth')}
+      />
+    );
+  }
+
+  if (screen === 'reset-password') {
+    return (
+      <ResetPasswordScreen
+        onPasswordUpdated={() => {
+          setScreen('auth');
+          setMode('signin');
+        }}
+      />
     );
   }
 
@@ -294,6 +294,7 @@ export function AuthPage({ onAuthSuccess }: AuthPageProps) {
               <div className="text-right">
                 <button
                   type="button"
+                  onClick={() => setScreen('forgot-password')}
                   className="text-sm text-teal-600 hover:text-teal-700 font-medium"
                 >
                   Forgot password?
