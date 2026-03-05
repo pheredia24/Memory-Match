@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, X, Upload, Check, ArrowLeft, Plus, ChevronRight, Play } from 'lucide-react';
+import { Settings, X, Upload, Check, ArrowLeft, Plus, ChevronRight, Play, LogOut } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -8,8 +8,22 @@ import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Progress } from './components/ui/progress';
 import { Checkbox } from './components/ui/checkbox';
 import { Switch } from './components/ui/switch';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './components/ui/dropdown-menu';
 import { GameCard } from './components/GameCard';
 import { GameplayScreen } from './components/GameplayScreen';
+import { AdminLayout } from './components/admin/AdminLayout';
+import { OverviewPage } from './components/admin/OverviewPage';
+import { UsersPage } from './components/admin/UsersPage';
+import { GamesPage } from './components/admin/GamesPage';
+import { MediaPage } from './components/admin/MediaPage';
+import { ActivityPage } from './components/admin/ActivityPage';
+import { AuthPage } from './components/AuthPage';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 
@@ -30,6 +44,9 @@ const gameModes: Record<GameMode, GameModeConfig> = {
 };
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [viewMode, setViewMode] = useState<'user' | 'admin'>('user');
+  const [adminPage, setAdminPage] = useState<'overview' | 'users' | 'games' | 'media' | 'activity'>('overview');
   const [activeTab, setActiveTab] = useState('crear');
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
@@ -145,6 +162,26 @@ export default function App() {
     }
   }, [step, title, slugManuallyEdited]);
 
+  // Scroll to top when changing steps
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
+
+  // Scroll to top when changing tabs
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
+  // Scroll to top when changing admin pages
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [adminPage]);
+
+  // Scroll to top when changing view mode
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [viewMode]);
+
   const handleContinueToStep2 = () => {
     setStep(2);
   };
@@ -172,6 +209,63 @@ export default function App() {
     }, 2400);
   };
 
+  // Show auth page if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Toaster />
+        <AuthPage onAuthSuccess={() => {
+          setIsAuthenticated(true);
+          toast.success('Welcome to MemoryGame!');
+        }} />
+      </>
+    );
+  }
+
+  // Toggle between user and admin view (for demo purposes)
+  if (viewMode === 'admin') {
+    return (
+      <>
+        <Toaster />
+        <AdminLayout
+          currentPage={adminPage}
+          onNavigate={setAdminPage}
+          onSync={() => toast.success('Data synced')}
+          onWorkspace={() => toast.info('Workspace settings')}
+          onLogout={() => {
+            setIsAuthenticated(false);
+            setViewMode('user');
+            toast.success('Logged out successfully');
+          }}
+        >
+          {adminPage === 'overview' && <OverviewPage onNavigate={setAdminPage} />}
+          {adminPage === 'users' && <UsersPage />}
+          {adminPage === 'games' && <GamesPage />}
+          {adminPage === 'media' && (
+            <MediaPage 
+              onNavigateToGame={() => {
+                setAdminPage('games');
+                toast.info('Navigated to game');
+              }} 
+            />
+          )}
+          {adminPage === 'activity' && (
+            <ActivityPage 
+              onNavigateToUser={() => {
+                setAdminPage('users');
+                toast.info('Navigated to user');
+              }}
+              onNavigateToGame={() => {
+                setAdminPage('games');
+                toast.info('Navigated to game');
+              }}
+            />
+          )}
+        </AdminLayout>
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <Toaster />
@@ -184,9 +278,34 @@ export default function App() {
           <h1 className="font-semibold text-gray-900">
             {activeTab === 'crear' ? 'Crear juego' : 'Mis juegos'}
           </h1>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Settings className="h-5 w-5 text-blue-600" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9"
+              >
+                <Settings className="h-5 w-5 text-blue-600" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setViewMode('admin')}>
+                <Settings className="h-4 w-4 mr-2" />
+                Admin Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => {
+                  setIsAuthenticated(false);
+                  toast.success('Logged out successfully');
+                }}
+                className="text-red-600 focus:text-red-600"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* iOS-style Segmented Control */}
@@ -466,9 +585,9 @@ export default function App() {
                     </h3>
                     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                       {/* Tiempo */}
-                      <button
+                      <div
                         onClick={() => setShowTime(!showTime)}
-                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-200"
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-200 cursor-pointer"
                       >
                         <div className="flex-1 text-left">
                           <div className="text-base text-gray-900 font-medium">Tiempo</div>
@@ -480,12 +599,12 @@ export default function App() {
                           className="ml-3"
                           onClick={(e) => e.stopPropagation()}
                         />
-                      </button>
+                      </div>
 
                       {/* Intentos */}
-                      <button
+                      <div
                         onClick={() => setShowAttempts(!showAttempts)}
-                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-200"
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-200 cursor-pointer"
                       >
                         <div className="flex-1 text-left">
                           <div className="text-base text-gray-900 font-medium">Intentos</div>
@@ -497,12 +616,12 @@ export default function App() {
                           className="ml-3"
                           onClick={(e) => e.stopPropagation()}
                         />
-                      </button>
+                      </div>
 
                       {/* Leaderboard */}
-                      <button
+                      <div
                         onClick={() => setShowLeaderboard(!showLeaderboard)}
-                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer"
                       >
                         <div className="flex-1 text-left">
                           <div className="text-base text-gray-900 font-medium">Leaderboard</div>
@@ -514,7 +633,7 @@ export default function App() {
                           className="ml-3"
                           onClick={(e) => e.stopPropagation()}
                         />
-                      </button>
+                      </div>
                     </div>
                   </div>
 
@@ -726,6 +845,10 @@ export default function App() {
           showTime={showTime}
           showAttempts={showAttempts}
           onClose={() => setShowGameplay(false)}
+          onCreateGame={() => {
+            setShowGameplay(false);
+            setIsAuthenticated(false);
+          }}
         />
       )}
     </div>

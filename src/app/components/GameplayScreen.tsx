@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, RotateCcw, Share2 } from 'lucide-react';
+import { X, RotateCcw, Share2, Sparkles } from 'lucide-react';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -17,6 +17,7 @@ interface GameplayScreenProps {
   showTime: boolean;
   showAttempts: boolean;
   onClose: () => void;
+  onCreateGame?: () => void;
 }
 
 export function GameplayScreen({ 
@@ -24,7 +25,8 @@ export function GameplayScreen({
   photos, 
   showTime, 
   showAttempts, 
-  onClose 
+  onClose,
+  onCreateGame
 }: GameplayScreenProps) {
   const [cards, setCards] = useState<Card[]>([]);
   const [flippedCards, setFlippedCards] = useState<string[]>([]);
@@ -110,17 +112,22 @@ export function GameplayScreen({
     return Math.floor(Math.min(maxCardWidthFromWidth, maxCardWidthFromHeight));
   };
 
-  const [cardSize, setCardSize] = useState(calculateCardSize());
+  const [cardSize, setCardSize] = useState(100); // Start with a default value
 
-  // Recalculate on window resize or layout change
+  // Recalculate on window resize, layout change, or cards initialization
   useEffect(() => {
-    const handleResize = () => {
+    const updateCardSize = () => {
       setCardSize(calculateCardSize());
     };
     
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [layout.cols, layout.rows]);
+    // Calculate initially when cards are loaded
+    if (cards.length > 0) {
+      updateCardSize();
+    }
+    
+    window.addEventListener('resize', updateCardSize);
+    return () => window.removeEventListener('resize', updateCardSize);
+  }, [layout.cols, layout.rows, cards.length]);
 
   const handleCardClick = (cardId: string) => {
     if (isProcessing) return;
@@ -380,6 +387,28 @@ export function GameplayScreen({
                     Compartir
                   </Button>
                 </div>
+
+                {/* Creator CTA Section */}
+                {onCreateGame && (
+                  <div className="mt-8 pt-8 border-t border-gray-200">
+                    <div className="text-center">
+                      <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-teal-500 to-purple-600 rounded-full mb-4">
+                        <Sparkles className="h-6 w-6 text-white" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">Create your own game</h3>
+                      <p className="text-gray-600 mb-6">
+                        Build a game like this with your own images in minutes
+                      </p>
+                      <Button
+                        className="w-full h-12 bg-gradient-to-r from-teal-600 to-purple-600 hover:from-teal-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg"
+                        onClick={onCreateGame}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Create Your Game
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
